@@ -31,10 +31,11 @@ library(ggh4x)
 theme_set(theme_hc())
 theme_replace(axis.title.y=element_text(angle=90),
               axis.title = element_text(face="bold"))
+pal <- c("#e44b49ff", "#74afb7ff")
 
 ### load data ----------------
 
-pbdb <- fetch ("pbdb") #Paleobiology database
+pbdb <- chronosphere::fetch ("pbdb", ver="20220126", datadir="data/chronos") #Paleobiology database
 dat <- subset(pbdb,order == "Scleractinia") # Scleractinian only
 
 need <- c("occurrence_no", "collection_no", "identified_name", "accepted_name", 
@@ -44,7 +45,7 @@ dat <- dat [, need] # make a new df with needed columns
 
 art <- read.csv(file.path("data", "ART_v1.csv")) # ART database v1
 
-ctd <- fetch("CoralTraitDB") # Coral Traits Database
+ctd <- chronosphere::fetch("CoralTraitDB", datadir = "data/chronos") # Coral Traits Database
 nrow(ctd)
 
 tr_lst <- read.csv(file.path("data", "released_traits.csv"))
@@ -61,13 +62,12 @@ dat <- unique(dat) #omit duplicate data
 
 ### binning at stage level ---------------
 
-data(stages)
-data(keys)
+data(stages, package="divDyn")
+data(keys, package="divDyn")
 
 # the 'stg' entries (lookup) 
-
-stgMin <- categorize(dat[ ,"early_interval"], keys$stgInt) 
-stgMax <- categorize(dat[ ,"late_interval"], keys$stgInt)
+stgMin <- divDyn::categorize(dat[ ,"early_interval"], keys$stgInt)
+stgMax <- divDyn::categorize(dat[ ,"late_interval"], keys$stgInt)
 
 # convert to numeric 
 
@@ -99,7 +99,7 @@ dat <- dat[!is.na(dat$stg),]
 
 # filter that to reef corals
 
-traits <- fetch(dat="som", var="kiessling-coralgenera")
+traits <- chronosphere::fetch(dat="som", var="kiessling-coralgenera", datadir="data/chronos")
 
 # assign the colonial/solitary status
 dat$genus[dat$genus=="Montastraea"] <- "Montastrea"
@@ -160,7 +160,7 @@ prop0 <- merge(prop, stages)
 
 no_art <- setNames(data.frame(table(all_trait$stg)),
          c("stg", "value"))
-no_art$cat <- "ART"
+no_art$cat <- "ARTD"
 
 # add CTD
 tax <- strsplit(ctd$specie_name, " ")
@@ -185,50 +185,50 @@ trait_genera$stg <- rownames(trait_genera)
 # Number of traits over time
 no_ctd <- setNames(data.frame(table(all_trait$stg)),
                    c("stg", "value"))
-no_ctd$cat <- "ART + CTD"
+no_ctd$cat <- "ARTD + CTD"
 
-# Proportion of trait genera relative to pbdb genera
+# Proportion of trait genera relative to pbdb genera ----
 
 prop <- merge(trait_genera, all_genera)
 prop$prop <- prop$trait_only/prop$all
 
 prop1 <- merge(prop, stages)
 
-prop0$cat <- "ART"
-prop1$cat <- "ART + CTD"
+prop0$cat <- "ARTD"
+prop1$cat <- "ARTD + CTD"
 
 prop <- rbind(prop0, prop1)
 
 p0 <- ggplot(prop[prop$stg>50,], aes(x=mid, y=prop*100, col=cat)) +
   geom_vline(xintercept = 252, col="darkgrey", linetype="dashed") +
   geom_line(size=1) +
-  geom_point(size=3, shape=21, fill="white", stroke=1) +
+  geom_point(size=2, shape=21, fill="white", stroke=1) +
   scale_x_continuous(trans="reverse") +
   labs(x="Age (Ma)", y="% of genera in the PBDB", col="Data from") +
-  scale_colour_manual(values=c("darkgreen","chartreuse3"), 
-                      breaks = c("ART + CTD", "ART"))
+  scale_colour_manual(values=c(pal[2],pal[1]), 
+                      breaks = c("ARTD + CTD", "ARTD"))
 
 svg("figs/Fig_02.svg", w=7, h=5)
 deeptime::gggeo_scale(p0, height = unit(1, "lines"), size = 3)
 dev.off()
 
-# Number of traits over time
+# Number of traits over time ----
 no_trait <- rbind(no_art, no_ctd)
 no_trait <- merge(no_trait, stages)
 
 ggplot(no_trait, aes(x=mid, y=value, col=cat)) +
   geom_vline(xintercept = 252, col="darkgrey", linetype="dashed") +
   geom_line(size=1) +
-  geom_point(size=3, shape=21, fill="white", stroke=1) +
+  geom_point(size=2, shape=21, fill="white", stroke=1) +
   scale_x_continuous(trans="reverse") +
   labs(x="Age (Ma)", y="Number of traits", col="Data from") +
-  scale_colour_manual(values=c("darkgreen","chartreuse3"), 
+  scale_colour_manual(values=c(pal[2],pal[1]), 
                       breaks = c("ART + CTD", "ART"))
 
 p1<- ggplot(no_trait[no_trait$cat=="ART",], aes(x=mid, y=value)) +
   geom_vline(xintercept = 252, col="darkgrey", linetype="dashed") +
-  geom_line(size=1, col="chartreuse3") +
-  geom_point(size=3, shape=21, fill="white", stroke=1, col="chartreuse3") +
+  geom_line(size=1, col=pal[1]) +
+  geom_point(size=2, shape=21, fill="white", stroke=1, col=pal[1]) +
   scale_x_continuous(trans="reverse") +
   labs(x="Age (Ma)", y="Number of traits")
 
@@ -252,7 +252,7 @@ data.frame(
 df <- merge(df, tr_lst)
 
 ggplot(df, aes(y=trait_name, x=prop*100)) +
-  geom_col(fill="chartreuse3", width=0.8) +
+  geom_col(fill=pal[1], width=0.8) +
   labs(x="% completeness", y="") +
   facet_grid(vars(type), scales="free_y") +
   force_panelsizes(rows = c(1, 8, 6),
