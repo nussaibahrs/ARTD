@@ -113,7 +113,7 @@ dat <- droplevels(dat)
 
 save(dat, file="data/complete.Rdata")
 
-### Genus ###
+# Genus level plots ####
 
 load("data/complete.Rdata")
 
@@ -129,7 +129,7 @@ colnames(all_genera) <- c("all")
 
 all_genera$stg <- rownames(all_genera)
 
-### Proportion of all traits - genus
+## Proportion of all traits - genus ----
 
 ### load all traits from ART
 
@@ -232,7 +232,7 @@ p1<- ggplot(no_trait[no_trait$cat=="ART",], aes(x=mid, y=value)) +
   scale_x_continuous(trans="reverse") +
   labs(x="Age (Ma)", y="Number of traits")
 
-svg("figs/Fig_02b.svg", w=7, h=5)
+svg("figs/Fig_02b.svg", w=6, h=4)
 deeptime::gggeo_scale(p1, height = unit(1, "lines"), size = 3)
 dev.off()
 
