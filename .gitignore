@@ -4,3 +4,5 @@
 .RData
 .Ruserdata
 data/chronos
+code/00-preparation.R
+*.svg
