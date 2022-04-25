@@ -25,6 +25,8 @@ library(chronosphere)
 library(ggplot2)
 library(ggthemes)
 library(ggh4x)
+library(cowplot)
+library(patchwork)
 
 # Theme for ggplot --------------------------------------------------------
 
@@ -116,7 +118,15 @@ save(dat, file="data/complete.Rdata")
 # Genus level plots ####
 
 load("data/complete.Rdata")
+data(stages, package="divDyn")
 
+## some numbers ----
+length(unique(art$genus_name)) #number of genera
+length(unique(art$accepted_name[art$rank=="species"]))
+
+ #number of species
+      
+nrow(art) #number of trait values
 # counts of all pbdb genera in each stage
 
 ngen <- table(dat$genus, dat$stg)
@@ -208,33 +218,22 @@ p0 <- ggplot(prop[prop$stg>50,], aes(x=mid, y=prop*100, col=cat)) +
   scale_colour_manual(values=c(pal[2],pal[1]), 
                       breaks = c("ARTD + CTD", "ARTD"))
 
-svg("figs/Fig_02.svg", w=7, h=5)
-deeptime::gggeo_scale(p0, height = unit(1, "lines"), size = 3)
-dev.off()
+p0 <-  deeptime::gggeo_scale(p0, height = unit(1, "lines"), size = 3)
 
 # Number of traits over time ----
 no_trait <- rbind(no_art, no_ctd)
 no_trait <- merge(no_trait, stages)
 
-ggplot(no_trait, aes(x=mid, y=value, col=cat)) +
+p1<- ggplot(no_trait[no_trait$cat=="ARTD",], aes(x=mid, y=value, col=cat)) +
   geom_vline(xintercept = 252, col="darkgrey", linetype="dashed") +
   geom_line(size=1) +
   geom_point(size=2, shape=21, fill="white", stroke=1) +
   scale_x_continuous(trans="reverse") +
-  labs(x="Age (Ma)", y="Number of traits", col="Data from") +
+  labs(x="Age (Ma)", y="Number of traits") +
   scale_colour_manual(values=c(pal[2],pal[1]), 
-                      breaks = c("ART + CTD", "ART"))
+                      breaks = c("ARTD + CTD", "ARTD"))
 
-p1<- ggplot(no_trait[no_trait$cat=="ART",], aes(x=mid, y=value)) +
-  geom_vline(xintercept = 252, col="darkgrey", linetype="dashed") +
-  geom_line(size=1, col=pal[1]) +
-  geom_point(size=2, shape=21, fill="white", stroke=1, col=pal[1]) +
-  scale_x_continuous(trans="reverse") +
-  labs(x="Age (Ma)", y="Number of traits")
-
-svg("figs/Fig_02b.svg", w=6, h=4)
-deeptime::gggeo_scale(p1, height = unit(1, "lines"), size = 3)
-dev.off()
+p1 <- deeptime::gggeo_scale(p1, height = unit(1, "lines"), size = 3)
 
 # Completeness of data ----------------------------------------------------
 art <- read.csv(file.path("data", "ART_v1.csv")) # ART database v1
@@ -249,14 +248,21 @@ data.frame(
   ), c("trait_name", "prop")
 )
 
+tr_lst$trait_name[tr_lst$trait_name=="Colony form"] <- "Corallite integration"
 df <- merge(df, tr_lst)
 
-ggplot(df, aes(y=trait_name, x=prop*100)) +
+p2 <- ggplot(df, aes(y=trait_name, x=prop*100)) +
   geom_col(fill=pal[1], width=0.8) +
   labs(x="% completeness", y="") +
   facet_grid(vars(type), scales="free_y") +
   force_panelsizes(rows = c(1, 8, 6),
                    TRUE)
 
-ggsave("figs/Fig_03.svg", w=8, h=5)
-  
+svg("figs/Fig_02ab.svg", w=8, h=4)
+ggdraw(p0)+ ggdraw(p1) +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")") & 
+  theme(plot.tag = element_text(size = 10))
+dev.off()
+
+ggsave("figs/Fig_02c.svg", p2, w=8, h=6)
